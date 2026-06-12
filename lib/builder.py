@@ -29,26 +29,11 @@ from config import config as cfg
 
 log = logging.getLogger(__name__)
 
-# Try to import FreeCAD and related modules with better error handling
 try:
-    if 'lib' in cfg and 'freecad_lib_dir' in cfg['lib'] and cfg['lib']['freecad_lib_dir'] != "":
-        if os.path.exists(cfg['lib']['freecad_lib_dir']):
-            sys.path.append(cfg['lib']['freecad_lib_dir'])
-    
-    if 'lib' in cfg and 'freecad_mod_dir' in cfg['lib'] and cfg['lib']['freecad_mod_dir'] != "":
-        if os.path.isdir(cfg['lib']['freecad_mod_dir']):
-            for mod in os.listdir(cfg['lib']['freecad_mod_dir']):
-                mod_path = os.path.join(cfg['lib']['freecad_mod_dir'], mod)
-                if os.path.isdir(mod_path):
-                    sys.path.append(mod_path)
-    
-    import FreeCAD
     import cadquery
-    import importDXF
-    import importSVG
-    import Mesh
-    import Part
+    from cadquery import exporters
     CAD_LIBRARIES_AVAILABLE = True
+    log.info("CAD libraries (cadquery) loaded successfully")
 except ImportError as e:
     log.warning("CAD libraries not available: %s" % str(e))
     log.warning("CAD generation features will be disabled")
@@ -574,49 +559,46 @@ class Plate(object):
 
     def export(self, p, result, label, data_hash, config):
         log.info("Exporting %s layer for %s" % (label, data_hash))
-        Part.show(p.val().wrapped)
-        doc = FreeCAD.ActiveDocument
         pwd_len = len(config['app']['pwd'])
         result['exports'][label] = []
         if 'js' in result['formats']:
-            with open("%s/%s_%s.js" % (config['app']['export'], label,
-                                       data_hash), "w") as f:
-                cadquery.exporters.exportShape(p, 'TJS', f)
-                result['exports'][label].append(
-                    {'name': 'js', 'url': '%s/%s_%s.js' %
-                        (config['app']['export'][pwd_len:], label, data_hash)})
-                log.info("Exported 'JS'")
+            file_path = "%s/%s_%s.js" % (config['app']['export'], label, data_hash)
+            exporters.export(p, file_path, 'TJS')
+            result['exports'][label].append(
+                {'name': 'js', 'url': '%s/%s_%s.js' %
+                    (config['app']['export'][pwd_len:], label, data_hash)})
+            log.info("Exported 'JS'")
         if 'brp' in result['formats']:
-            Part.export(doc.Objects, "%s/%s_%s.brp" %
-                        (config['app']['export'], label, data_hash))
+            file_path = "%s/%s_%s.brp" % (config['app']['export'], label, data_hash)
+            exporters.export(p, file_path, 'BREP')
             result['exports'][label].append(
                 {'name': 'brp', 'url': '%s/%s_%s.brp' %
                     (config['app']['export'][pwd_len:], label, data_hash)})
             log.info("Exported 'BRP'")
         if 'stp' in result['formats']:
-            Part.export(doc.Objects, "%s/%s_%s.stp" %
-                        (config['app']['export'], label, data_hash))
+            file_path = "%s/%s_%s.stp" % (config['app']['export'], label, data_hash)
+            exporters.export(p, file_path, 'STEP')
             result['exports'][label].append(
                 {'name': 'stp', 'url': '%s/%s_%s.stp' %
                     (config['app']['export'][pwd_len:], label, data_hash)})
             log.info("Exported 'STP'")
         if 'stl' in result['formats']:
-            Mesh.export(doc.Objects, "%s/%s_%s.stl" %
-                        (config['app']['export'], label, data_hash))
+            file_path = "%s/%s_%s.stl" % (config['app']['export'], label, data_hash)
+            exporters.export(p, file_path, 'STL')
             result['exports'][label].append(
                 {'name': 'stl', 'url': '%s/%s_%s.stl' %
                     (config['app']['export'][pwd_len:], label, data_hash)})
             log.info("Exported 'STL'")
         if 'dxf' in result['formats']:
-            importDXF.export(doc.Objects, "%s/%s_%s.dxf" %
-                             (config['app']['export'], label, data_hash))
+            file_path = "%s/%s_%s.dxf" % (config['app']['export'], label, data_hash)
+            exporters.export(p, file_path, 'DXF')
             result['exports'][label].append(
                 {'name': 'dxf', 'url': '%s/%s_%s.dxf' %
                     (config['app']['export'][pwd_len:], label, data_hash)})
             log.info("Exported 'DXF'")
         if 'svg' in result['formats']:
-            importSVG.export(doc.Objects, "%s/%s_%s.svg" %
-                             (config['app']['export'], label, data_hash))
+            file_path = "%s/%s_%s.svg" % (config['app']['export'], label, data_hash)
+            exporters.export(p, file_path, 'SVG')
             result['exports'][label].append(
                 {'name': 'svg', 'url': '%s/%s_%s.svg' %
                     (config['app']['export'][pwd_len:], label, data_hash)})
@@ -629,8 +611,6 @@ class Plate(object):
                 {'name': 'json', 'url': '%s/%s_%s.json' %
                     (config['app']['export'][pwd_len:], label, data_hash)})
             log.info("Exported 'JSON'")
-        for o in doc.Objects:
-            doc.removeObject(o.Label)
 
 
 def build(data_hash, data, config):
