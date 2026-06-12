@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-# kb_builder builts keyboard plate and case CAD files using JSON input.
+# kb_builder builds keyboard plate and case CAD files using JSON input.
 #
 # Copyright (C) 2015  Will Stevens (swill)
 #
@@ -17,11 +18,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import lib.builder as builder
 import hashlib
 import json
 import logging
 import time
+import traceback
+
 import tornado.gen
 import tornado.httpclient
 import tornado.ioloop
@@ -32,24 +34,50 @@ from config import config
 
 builder_timeout = 7200
 
-logging.basicConfig()
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 class IndexHandler(tornado.web.RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "Content-Type, Accept")
+        self.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
+    def options(self):
+        self.set_status(204)
+        self.finish()
+
     def get(self):
         self.render('index.html')
 
     @tornado.gen.coroutine
     def post(self):
-        data = json.loads(self.request.body)
-        data_hash = hashlib.sha1(json.dumps(data, sort_keys=True)).hexdigest()
-        build_start = time.time()
-        logging.info("Processing: %s" % (data_hash))
-        cad = builder.build(data_hash, data, config)
-        logging.info("Finished: %s" % (data_hash))
-        logging.info("Processing took: {0:.2f} seconds".format(time.time() -
-                                                               build_start))
-        self.write(cad)
+        try:
+            data = json.loads(self.request.body)
+            data_hash = hashlib.sha1(json.dumps(data, sort_keys=True).encode('utf-8')).hexdigest()
+            build_start = time.time()
+            logger.info("Processing: %s" % (data_hash))
+            
+            import lib.builder as builder
+            cad = builder.build(data_hash, data, config)
+            
+            processing_time = time.time() - build_start
+            logger.info("Finished: %s" % (data_hash))
+            logger.info("Processing took: {0:.2f} seconds".format(processing_time))
+            self.write(cad)
+        except json.JSONDecodeError as e:
+            logger.error("Invalid JSON input: %s" % str(e))
+            self.set_status(400)
+            self.write({'error': 'Invalid JSON input', 'message': str(e)})
+        except Exception as e:
+            logger.error("Error processing request: %s" % str(e))
+            logger.error(traceback.format_exc())
+            self.set_status(500)
+            self.write({'error': 'Internal server error', 'message': str(e)})
 
 
 def make_app():
@@ -66,7 +94,7 @@ def make_app():
 def main():
     tornado.options.options.log_file_prefix = config['app']['log']
     tornado.options.parse_command_line()
-    logging.info("Started the kb_builder...")
+    logger.info("Started the kb_builder on port %d..." % config['app']['port'])
     app = make_app()
     app.listen(config['app']['port'])
     tornado.ioloop.IOLoop.current().start()

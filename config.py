@@ -20,15 +20,21 @@ import os
 config = {}
 
 config['app'] = {}
-config['app']['port'] = 80
+config['app']['port'] = 8888
 config['app']['pwd'] = os.path.dirname(__file__)
 config['app']['static'] = os.path.join(config['app']['pwd'], 'static')
 config['app']['export'] = os.path.join(config['app']['static'], 'exports')
 config['app']['formats'] = ['js', 'dxf', 'svg', 'brp', 'stp', 'stl', 'json']
 # ^ remove formats to speed up build time
-config['app']['debug'] = False
+config['app']['debug'] = True
 config['app']['log'] = './kb_builder.log'
 
 config['lib'] = {}
-config['lib']['freecad_lib_dir'] = "/usr/lib/freecad/lib"
+import sys
+if sys.platform.startswith('win'):
+    config['lib']['freecad_lib_dir'] = "C:/Program Files/FreeCAD/lib"
+elif sys.platform.startswith('linux'):
+    config['lib']['freecad_lib_dir'] = "/usr/lib/freecad/lib"
+else:
+    config['lib']['freecad_lib_dir'] = "/Applications/FreeCAD.app/Contents/lib"
 config['lib']['freecad_mod_dir'] = ""
