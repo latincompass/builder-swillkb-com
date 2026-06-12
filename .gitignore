@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+*.pyc
+.*.sw?
+.idea
+static/exports
+.vagrant
