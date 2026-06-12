@@ -206,8 +206,8 @@ class Plate(object):
                 (-self.width/2 + self.x_pad + self.kerf*2,
                  -self.height/2 + self.y_pad + self.kerf*2)
             ]
-            p = p.polyline(points).cutThruAll()
-            self.export(p, result, CLOSED_LAYER, data_hash, config)
+            p = p.polyline(points).close().cutThruAll()
+            self.export(p, CLOSED_LAYER, data_hash, config)
 
             p = p.center(0, -self.height/2 + self.y_pad/2 + self.kerf)
             points = [
@@ -217,11 +217,18 @@ class Plate(object):
                 (-self.usb_width/2 + self.kerf, self.y_pad/2 + self.kerf),
                 (-self.usb_width/2 + self.kerf, -self.y_pad/2 - self.kerf)
             ]
-            p = p.polyline(points).cutThruAll()
-            self.export(p, result, OPEN_LAYER, data_hash, config)
+            p = p.polyline(points).close().cutThruAll()
+            self.export(p, OPEN_LAYER, data_hash, config)
         return result
 
     def parse_layout(self, layout):
+        if isinstance(layout, str):
+            try:
+                layout = json.loads(layout)
+            except json.JSONDecodeError as e:
+                log.error("Failed to parse layout string: %s" % str(e))
+                raise
+        
         layout_width = 0
         layout_height = 0
         key_desc = False
@@ -382,7 +389,8 @@ class Plate(object):
             points = self.rotate_points(points, 90, (0, 0))
         if r:
             points = self.rotate_points(points, r, (0, 0))
-        p = self.center(p, c[0], c[1]).polyline(points).cutThruAll()
+        p = self.center(p, c[0], c[1])
+        p = p.polyline(points).close().cutThruAll()
 
         if (w >= 2 and w < 3) or (rotate and h >= 2 and h < 3):
             if s == 0:
@@ -413,7 +421,7 @@ class Plate(object):
                     points = self.rotate_points(points, 90, (0, 0))
                 if rs:
                     points = self.rotate_points(points, rs, (0, 0))
-                p = p.polyline(points).cutThruAll()
+                p = p.polyline(points).close().cutThruAll()
             if s == 1:
                 points = [
                     (7 - k, -7 + k), (7 - k, -4.73 + k), (8.575 + k, -4.73 + k),
@@ -438,7 +446,7 @@ class Plate(object):
                     points = self.rotate_points(points, 90, (0, 0))
                 if rs:
                     points = self.rotate_points(points, rs, (0, 0))
-                p = p.polyline(points).cutThruAll()
+                p = p.polyline(points).close().cutThruAll()
             if s == 2:
                 points_l = [(-10.3 - k, -6.45 + k), (-13.6 + k, -6.45 + k),
                             (-13.6 + k, 7.75 - k), (-10.3 - k, 7.75 - k),
@@ -493,7 +501,7 @@ class Plate(object):
                     points = self.rotate_points(points, 90, (0, 0))
                 if rs:
                     points = self.rotate_points(points, rs, (0, 0))
-                p = p.polyline(points).cutThruAll()
+                p = p.polyline(points).close().cutThruAll()
             if s == 1:
                 points = [
                     (7 - k, -7 + k), (7 - k, -2.3 + k), (x - 3.325 + k, -2.3 + k),
@@ -518,7 +526,7 @@ class Plate(object):
                     points = self.rotate_points(points, 90, (0, 0))
                 if rs:
                     points = self.rotate_points(points, rs, (0, 0))
-                p = p.polyline(points).cutThruAll()
+                p = p.polyline(points).close().cutThruAll()
             if s == 2:
                 points_l = [(-x + 1.65 - k, -6.45 + k), (-x - 1.65 + k, -6.45 + k),
                             (-x - 1.65 + k, 7.75 - k), (-x + 1.65 - k, 7.75 - k),
